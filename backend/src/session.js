@@ -3,6 +3,7 @@ const { getDb } = require("./db");
 
 const SESSION_COOKIE = "oc_session";
 const CART_COOKIE = "oc_cart";
+const GUEST_COOKIE = "oc_guest";
 
 function parseCookies(req) {
   const header = req.headers.cookie || "";
@@ -100,13 +101,54 @@ function readCartId(req) {
   return parseCookies(req)[CART_COOKIE] ?? null;
 }
 
+function getGuestId(req) {
+  return parseCookies(req)[GUEST_COOKIE] ?? null;
+}
+
+function ensureGuest(req, res) {
+  const existing = getGuestId(req);
+  if (existing) return existing;
+  const guest = crypto.randomBytes(12).toString("hex");
+  res.cookie(GUEST_COOKIE, guest, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 365 * 24 * 3600 * 1000,
+  });
+  return guest;
+}
+
+/**
+ * Identidad de la conversación:
+ *  - productor autenticado -> role "producer"
+ *  - comprador autenticado -> role "buyer"
+ *  - visitante -> role "guest" con cookie persistente
+ */
+function getViewer(req, res, options = {}) {
+  const user = getSessionUser(req);
+  if (user) {
+    return {
+      userId: user.id,
+      producerId: user.role === "productor" ? user.producer_id : null,
+      role: user.role === "productor" ? "producer" : "buyer",
+      name: user.name,
+    };
+  }
+  const guestId = options.createGuest === false ? getGuestId(req) : ensureGuest(req, res);
+  return { userId: null, producerId: null, role: "guest", guestId, name: "Visitante comunitario" };
+}
+
 module.exports = {
   SESSION_COOKIE,
   CART_COOKIE,
+  GUEST_COOKIE,
   parseCookies,
   getSessionUser,
   createSession,
   destroySession,
   ensureCart,
   readCartId,
+  getGuestId,
+  ensureGuest,
+  getViewer,
 };

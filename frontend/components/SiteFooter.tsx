@@ -72,6 +72,11 @@ export function SiteFooter() {
                   Centro de Ayuda Cívica
                 </Link>
               </li>
+              <li>
+                <Link href="/lenguas" className="hover:text-primary transition-colors">
+                  Lenguas originarias e intérpretes
+                </Link>
+              </li>
             </ul>
           </div>
           <div>

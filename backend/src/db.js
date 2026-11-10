@@ -7,11 +7,13 @@ exports.verifyPassword = verifyPassword;
 exports.newToken = newToken;
 exports.slugify = slugify;
 exports.getDb = getDb;
+exports.seedLanguages = seedLanguages;
 const node_sqlite_1 = require("node:sqlite");
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_path_1 = __importDefault(require("node:path"));
 const node_crypto_1 = __importDefault(require("node:crypto"));
 const seed_data_1 = require("./seed-data");
+const languages_1 = require("./languages");
 const DATA_DIR = process.env.DATA_DIR || node_path_1.default.join(__dirname, "..", "data");
 const DB_PATH = node_path_1.default.join(DATA_DIR, "origen.db");
 function hashPassword(password) {
@@ -173,9 +175,13 @@ function createSchema(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       producer_id INTEGER NOT NULL REFERENCES producers(id),
       buyer_id INTEGER REFERENCES users(id),
+      buyer_guest TEXT,
       buyer_name TEXT NOT NULL,
       subject TEXT NOT NULL DEFAULT '',
       unread INTEGER NOT NULL DEFAULT 0,
+      buyer_unread INTEGER NOT NULL DEFAULT 0,
+      producer_unread INTEGER NOT NULL DEFAULT 0,
+      is_demo INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL
     );
 
@@ -185,7 +191,47 @@ function createSchema(db) {
       sender TEXT NOT NULL,
       body TEXT NOT NULL,
       product_id INTEGER REFERENCES products(id),
+      type TEXT NOT NULL DEFAULT 'text',
+      lang TEXT NOT NULL DEFAULT 'es',
+      read_at TEXT,
       created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS message_translations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      lang TEXT NOT NULL,
+      body TEXT NOT NULL,
+      provider TEXT NOT NULL DEFAULT 'none',
+      created_at TEXT NOT NULL,
+      UNIQUE(message_id, lang)
+    );
+
+    CREATE TABLE IF NOT EXISTS interpreter_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      folio TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      language TEXT NOT NULL,
+      message TEXT NOT NULL,
+      channel TEXT NOT NULL DEFAULT 'whatsapp',
+      status TEXT NOT NULL DEFAULT 'pendiente',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS languages (
+      code TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      native_name TEXT NOT NULL,
+      family TEXT NOT NULL,
+      speakers INTEGER NOT NULL DEFAULT 0,
+      speakers_label TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'riesgo',
+      region TEXT NOT NULL DEFAULT '',
+      municipalities TEXT NOT NULL DEFAULT '',
+      color TEXT NOT NULL DEFAULT '#2C694E',
+      description TEXT NOT NULL DEFAULT '',
+      resources TEXT NOT NULL DEFAULT '[]'
     );
 
     CREATE TABLE IF NOT EXISTS questions (
@@ -198,7 +244,58 @@ function createSchema(db) {
       created_at TEXT NOT NULL
     );
   `);
+
+  // Migraciones incrementales para bases existentes
+  migrate(db);
 }
+
+function hasColumn(db, table, column) {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+  return rows.some((row) => row.name === column);
+}
+
+function addColumn(db, table, column, definition) {
+  if (!hasColumn(db, table, column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+function migrate(db) {
+  addColumn(db, "threads", "buyer_guest", "TEXT");
+  addColumn(db, "threads", "buyer_unread", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(db, "threads", "producer_unread", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(db, "threads", "is_demo", "INTEGER NOT NULL DEFAULT 0");
+  addColumn(db, "messages", "type", "TEXT NOT NULL DEFAULT 'text'");
+  addColumn(db, "messages", "lang", "TEXT NOT NULL DEFAULT 'es'");
+  addColumn(db, "messages", "read_at", "TEXT");
+  // Conserva los no leídos históricos del comprador
+  db.exec("UPDATE threads SET buyer_unread = unread WHERE buyer_unread = 0 AND unread > 0");
+}
+
+function seedLanguages(db) {
+  const count = db.prepare("SELECT COUNT(*) AS n FROM languages").get();
+  if (count.n > 0) return;
+  const insert = db.prepare(
+    "INSERT INTO languages (code,name,native_name,family,speakers,speakers_label,status,region,municipalities,color,description,resources) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+  );
+  for (const language of languages_1.LANGUAGES) {
+    insert.run(
+      language.code,
+      language.name,
+      language.nativeName,
+      language.family,
+      language.speakers,
+      language.speakersLabel,
+      language.status,
+      language.region,
+      language.municipalities,
+      language.color,
+      language.description,
+      JSON.stringify(language.resources ?? []),
+    );
+  }
+}
+
 function seed(db) {
     const count = db.prepare("SELECT COUNT(*) AS n FROM producers").get();
     if (count.n > 0)
@@ -281,7 +378,8 @@ function seed(db) {
         });
         // Message threads + seeded conversation
         const insertThread = db.prepare(`
-      INSERT INTO threads (producer_id,buyer_id,buyer_name,subject,unread,updated_at) VALUES (?,?,?,?,?,?)
+      INSERT INTO threads (producer_id,buyer_id,buyer_name,subject,unread,buyer_unread,producer_unread,is_demo,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?)
     `);
         const threadSeed = [
             {
@@ -310,7 +408,7 @@ function seed(db) {
             },
         ];
         for (const t of threadSeed) {
-            insertThread.run(producerId.get(t.producer), alejandra.id, "Alejandra Ruiz Moreno", t.subject, t.unread, t.updated);
+            insertThread.run(producerId.get(t.producer), alejandra.id, "Alejandra Ruiz Moreno", t.subject, t.unread, t.unread, 0, 1, t.updated);
         }
         const coffee = db.prepare("SELECT id FROM products WHERE slug = ?").get("cafe-arabica-tostado-1kg");
         const insertMessage = db.prepare(`

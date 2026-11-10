@@ -14,6 +14,7 @@ const NAV = [
   { href: "/marketplace", label: "Marketplace", paths: ["/marketplace"] },
   { href: "/como-funciona", label: "Cómo Funciona", paths: ["/como-funciona"] },
   { href: "/productores", label: "Productores Verificados", paths: ["/productores"] },
+  { href: "/lenguas", label: "Lenguas", paths: ["/lenguas"] },
 ];
 
 type Me = { id: number; name: string; role: string; producer_id: number | null } | null;
@@ -26,12 +27,29 @@ export function SiteHeader() {
   const [location, setLocation] = useState("all");
   const [me, setMe] = useState<Me>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setMe(d.user ?? null))
       .catch(() => setMe(null));
+  }, [pathname]);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      fetch("/api/messages/unread", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => alive && setUnread(Number(d.unread) || 0))
+        .catch(() => {});
+    };
+    load();
+    const timer = window.setInterval(load, 25000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
   }, [pathname]);
 
   const search = (event: FormEvent) => {
@@ -108,6 +126,19 @@ export function SiteHeader() {
               className="hidden sm:inline-flex items-center px-space-md py-2 rounded-lg bg-tertiary-container text-on-tertiary font-label-md text-label-md hover:bg-tertiary transition-colors shadow-sm"
             >
               Vender / Registrar negocio gratis
+            </Link>
+            <Link
+              href="/mensajes"
+              className="relative p-2 text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center"
+              aria-label={`Mensajes, ${unread} sin leer`}
+              title="Mensajería directa"
+            >
+              <span className="material-symbols-outlined">forum</span>
+              {unread > 0 && (
+                <span className="absolute top-1 right-0.5 bg-tertiary-container text-on-tertiary font-label-sm text-label-sm rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px]">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
             </Link>
             <Link
               href="/carrito"

@@ -67,6 +67,8 @@ export type Thread = {
   subject: string;
   updated_at: string;
   unread: number;
+  is_demo?: number;
+  last_sender?: string;
   producer_name: string;
   producer_avatar: string;
   producer_municipality: string;
@@ -77,10 +79,13 @@ export type Thread = {
 export type Message = {
   id: number;
   thread_id: number;
-  sender: "buyer" | "producer";
+  sender: "buyer" | "producer" | "system";
   body: string;
   created_at: string;
   product_id: number | null;
+  type?: string;
+  lang?: string;
+  read_at?: string | null;
   product_name?: string | null;
   product_price?: number | null;
   product_image?: string | null;
@@ -101,4 +106,34 @@ export type OrderRow = {
   status: string;
   note: string;
   created_at: string;
+};
+
+export type Language = {
+  code: string;
+  name: string;
+  nativeName: string;
+  family: string;
+  speakers: number;
+  speakersLabel: string;
+  status: "vital" | "riesgo" | "critico";
+  region: string;
+  municipalities: string;
+  color: string;
+  description: string;
+  resources: { label: string; url: string; kind: string }[];
+};
+
+export type TranslationProvider = {
+  name: string;
+  supports: string[];
+  chiapas: boolean;
+  note: string;
+  url: string;
+};
+
+export type TranslationResearch = {
+  summary: string;
+  automaticAvailable: boolean;
+  providers: TranslationProvider[];
+  humanNetworks: { name: string; url: string; note: string }[];
 };

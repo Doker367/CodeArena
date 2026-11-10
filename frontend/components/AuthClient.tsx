@@ -199,15 +199,16 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
             </div>
           </div>
 
-          <div className="bg-surface-container-low rounded-xl p-4 flex items-center gap-3">
+          <Link href="/lenguas" className="bg-surface-container-low rounded-xl p-4 flex items-center gap-3 hover:bg-surface-container transition-colors">
             <span className="material-symbols-outlined text-2xl text-secondary">translate</span>
             <div>
               <p className="font-label-md text-label-md text-primary font-bold">Atención en Lenguas Maternas</p>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
-                Acompañamiento telefónico bilingüe: Tsotsil, Tseltal, Ch'ol y Español.
+                Acompañamiento bilingüe y red de intérpretes: Tsotsil, Tseltal, Ch'ol y más.
               </p>
             </div>
-          </div>
+            <span className="material-symbols-outlined text-outline ml-auto">arrow_forward</span>
+          </Link>
         </aside>
 
         <section className="lg:col-span-7 bg-surface-container-lowest rounded-2xl shadow-sm p-6 lg:p-8">

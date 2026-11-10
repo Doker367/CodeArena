@@ -28,8 +28,9 @@ El frontend proxya `/api/*` hacia el backend, por lo que las cookies `httpOnly` 
 | Carrito y Pedido Directo | `/carrito` | Carrito, entrega, pago, desglose, pedido real |
 | Panel del Emprendedor | `/panel` | Métricas, pedidos, catálogo editable, preguntas, ubicación |
 | Acceso y Registro Multiusuario | `/acceso` | Registro/login real por rol (comprador, productor, eco) |
+| Lenguas Originarias | `/lenguas` | 12 lenguas, estado real de traducción, intérpretes y diccionarios |
 
-Extras para completar la navegación del diseño: `/` (redirige al mercado), `/productores`, `/como-funciona`.
+Extras para completar la navegación: `/` (redirige al mercado), `/productores`, `/como-funciona`, `/lenguas`.
 
 ---
 
@@ -115,19 +116,37 @@ backend/
       catalog.js            # Catálogo, productores, ficha
       cart.js               # Carrito CRUD
       orders.js             # Pedido transaccional
-      messages.js           # Hilos y mensajes
+      messages.js           # Hilos, autorización, no leídos y respuestas
+      languages.js          # Lenguas, traducción e intérpretes
       seller.js             # Panel: productos, pedidos, preguntas
+    languages.js            # Catálogo de las 12 lenguas + investigación
+    translation.js          # Proveedor automático opt-in + fallback humano
 ```
 
 ### Backend (Node.js)
 
 - **SQLite** embebido con `node:sqlite` (sin binarios nativos).
 - **Sesiones** con token aleatorio en cookie `httpOnly` (`oc_session`) y tabla `sessions`.
+- **Invitados** con cookie `oc_guest`: pueden leer el hilo demo y al escribir abren su propia conversación.
 - **Contraseñas** con `scrypt` + salt (`crypto`).
 - **Carrito** persistente por cookie `oc_cart`; totales calculados en el servidor.
-- **Pedidos** transaccionales: descuenta stock, crea `order_items`, abre conversación con cada productor y vacía el carrito.
-- **Mensajería** persistente por hilo; el productor ve los hilos de su negocio.
+- **Pedidos** transaccionales: descuenta stock, crea `order_items`, abre/crea el hilo con cada productor mediante un mensaje de sistema y vacía el carrito.
+- **Mensajería** con autorización por participante, paginación (`before`/`limit`), sondeo con `peek`, no leídos separados para comprador y productor, acuses de lectura, respuestas del productor y límite de 12 mensajes/minuto.
 - **Panel** edita precio/stock/estado y publica productos; respuestas a preguntas.
+
+### Lenguas originarias
+
+`/lenguas` reúne las **12 lenguas reconocidas por la Constitución de Chiapas** (tseltal, tsotsil, ch'ol, zoque, tojolabal, mam, kakchikel, lacandón, mochó, jacalteco, chuj y kanjobal) con hablantes aproximados, territorios, estado de vitalidad y recursos.
+
+Investigación aplicada al producto:
+
+- Google Cloud Translation y Microsoft Translator **solo ofrecen maya yucateco**, no las lenguas de Chiapas.
+- **NLLB-200** (Meta) no incluye tsotsil, tseltal, ch'ol, tojolabal ni zoque en sus 200 lenguas.
+- Existe un modelo **experimental tsotsil→español** en Hugging Face con acceso restringido; se puede habilitar con `TRANSLATE_PROVIDER=hf` y `HF_TOKEN`.
+- Por eso el flujo principal es **intérprete comunitario humano** (`interpreter_requests`), con folio, canal de contacto y enlaces a DITSEL, Glosbe, INALI, CELALI y Maya Bridge.
+- La mensajería incluye un botón **Traducir** por mensaje; si no hay proveedor automático, explica la limitación y deriva a la solicitud de intérprete.
+
+> La demo guarda las solicitudes de intérprete localmente; no las envía a una red real.
 
 ### Endpoints
 
@@ -144,8 +163,14 @@ PATCH  /api/cart            { lineId, qty?, note? }
 DELETE /api/cart            { lineId } | { all: true }
 POST   /api/orders          { name, phone, email, address, delivery, payment }
 GET    /api/orders
-GET    /api/messages        ?thread=ID
+GET    /api/messages        ?thread=ID&before=ID&limit=50&peek=1
 POST   /api/messages        { threadId? | producerId, body, productId? }
+PATCH  /api/messages/read   { threadId }
+GET    /api/messages/unread
+GET    /api/languages
+POST   /api/languages/translate   { text, source, target, messageId? }
+POST   /api/languages/interpreter { name, phone, language, message, channel? }
+GET    /api/languages/translations/:messageId?lang=CODE
 GET    /api/seller
 POST   /api/seller          { name, price, stock, unit, description, category }
 PATCH  /api/seller          { id, status?, price?, stock? }

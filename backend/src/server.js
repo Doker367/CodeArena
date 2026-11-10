@@ -4,6 +4,7 @@ const { getDb } = require("./db");
 const authRoutes = require("./routes/auth");
 const cartRoutes = require("./routes/cart");
 const catalogRoutes = require("./routes/catalog");
+const languageRoutes = require("./routes/languages");
 const messageRoutes = require("./routes/messages");
 const orderRoutes = require("./routes/orders");
 const sellerRoutes = require("./routes/seller");
@@ -33,6 +34,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/seller", sellerRoutes);
+app.use("/api/languages", languageRoutes);
 app.use("/api", catalogRoutes);
 
 app.use((req, res) => {

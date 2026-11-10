@@ -11,10 +11,20 @@ exports.getFeaturedProduct = getFeaturedProduct;
 exports.getReviews = getReviews;
 exports.getProcessSteps = getProcessSteps;
 exports.getCart = getCart;
-exports.getThreads = getThreads;
+exports.getThreads = getThreadsForViewer;
+exports.getThreadsForViewer = getThreadsForViewer;
 exports.getThreadsByProducer = getThreadsByProducer;
 exports.getThread = getThread;
+exports.getThreadForViewer = getThreadForViewer;
+exports.canAccessThread = canAccessThread;
+exports.findThread = findThread;
+exports.createThread = createThread;
+exports.createMessage = createMessage;
 exports.getMessages = getMessages;
+exports.markThreadRead = markThreadRead;
+exports.getUnreadCount = getUnreadCount;
+exports.saveTranslation = saveTranslation;
+exports.getTranslation = getTranslation;
 exports.getSellerStats = getSellerStats;
 exports.getQuestions = getQuestions;
 exports.getOrdersForProducer = getOrdersForProducer;
@@ -185,29 +195,38 @@ function getCart(cartId) {
     const count = lines.reduce((sum, l) => sum + l.qty, 0);
     return { lines, subtotal, count };
 }
-function getThreads(userId) {
-    return plainList((0, db_1.getDb)()
-        .prepare(`SELECT t.id, t.producer_id, t.buyer_name, t.subject, t.updated_at, t.unread,
-              pr.name AS producer_name, pr.avatar AS producer_avatar,
-              pr.municipality AS producer_municipality, pr.kind AS producer_kind,
-              COALESCE((SELECT body FROM messages m WHERE m.thread_id = t.id ORDER BY m.id DESC LIMIT 1),'') AS last_body
-       FROM threads t JOIN producers pr ON pr.id = t.producer_id
-       ${userId ? "WHERE t.buyer_id = ?" : ""}
-       ORDER BY datetime(t.updated_at) DESC`)
-        .all(...(userId ? [userId] : [])));
+function viewerClause(viewer) {
+    if (viewer.role === "producer" && viewer.producerId) {
+        return { where: "t.producer_id = ?", params: [viewer.producerId], unread: "t.producer_unread" };
+    }
+    if (viewer.userId) {
+        return { where: "t.buyer_id = ?", params: [viewer.userId], unread: "t.buyer_unread" };
+    }
+    if (viewer.guestId) {
+        return { where: "(t.is_demo = 1 OR t.buyer_guest = ?)", params: [viewer.guestId], unread: "t.buyer_unread" };
+    }
+    return { where: "t.is_demo = 1", params: [], unread: "t.buyer_unread" };
 }
-function getThreadsByProducer(producerId) {
+
+function getThreadsForViewer(viewer) {
+    const clause = viewerClause(viewer);
     return plainList((0, db_1.getDb)()
         .prepare(
-            `SELECT t.id, t.producer_id, t.buyer_name, t.subject, t.updated_at, t.unread,
+            `SELECT t.id, t.producer_id, t.buyer_id, t.buyer_guest, t.buyer_name, t.subject,
+              t.updated_at, t.is_demo, ${clause.unread} AS unread,
               pr.name AS producer_name, pr.avatar AS producer_avatar,
               pr.municipality AS producer_municipality, pr.kind AS producer_kind,
-              COALESCE((SELECT body FROM messages m WHERE m.thread_id = t.id ORDER BY m.id DESC LIMIT 1),'') AS last_body
+              COALESCE((SELECT body FROM messages m WHERE m.thread_id = t.id ORDER BY m.id DESC LIMIT 1),'') AS last_body,
+              COALESCE((SELECT m.sender FROM messages m WHERE m.thread_id = t.id ORDER BY m.id DESC LIMIT 1),'') AS last_sender
        FROM threads t JOIN producers pr ON pr.id = t.producer_id
-       WHERE t.producer_id = ?
-       ORDER BY datetime(t.updated_at) DESC`,
+       WHERE ${clause.where}
+       ORDER BY datetime(t.updated_at) DESC, t.id DESC`,
         )
-        .all(producerId));
+        .all(...clause.params));
+}
+
+function getThreadsByProducer(producerId) {
+    return getThreadsForViewer({ role: "producer", producerId });
 }
 
 function getThread(id) {
@@ -218,14 +237,114 @@ function getThread(id) {
         .get(id);
     return thread ? { ...thread } : null;
 }
-function getMessages(threadId) {
-    return plainList((0, db_1.getDb)()
-        .prepare(`SELECT m.id, m.thread_id, m.sender, m.body, m.created_at, m.product_id,
+
+function getThreadForViewer(id, viewer) {
+    const thread = getThread(id);
+    if (!thread) return null;
+    return canAccessThread(thread, viewer) ? thread : null;
+}
+
+function canAccessThread(thread, viewer) {
+    if (!thread) return false;
+    if (viewer.role === "producer") return thread.producer_id === viewer.producerId;
+    if (viewer.userId) return thread.buyer_id === viewer.userId;
+    if (viewer.guestId) return thread.is_demo === 1 || thread.buyer_guest === viewer.guestId;
+    return thread.is_demo === 1;
+}
+
+function findThread(producerId, viewer) {
+    const db = (0, db_1.getDb)();
+    if (viewer.role === "producer") return null;
+    if (viewer.userId) {
+        return db
+            .prepare("SELECT id FROM threads WHERE producer_id = ? AND buyer_id = ? ORDER BY id ASC LIMIT 1")
+            .get(producerId, viewer.userId);
+    }
+    if (viewer.guestId) {
+        return db
+            .prepare("SELECT id FROM threads WHERE producer_id = ? AND buyer_guest = ? ORDER BY id ASC LIMIT 1")
+            .get(producerId, viewer.guestId);
+    }
+    return null;
+}
+
+function createThread({ producerId, userId, guestId, buyerName, subject }) {
+    const db = (0, db_1.getDb)();
+    const result = db
+        .prepare(
+            "INSERT INTO threads (producer_id,buyer_id,buyer_guest,buyer_name,subject,is_demo,updated_at) VALUES (?,?,?,?,?,?,?)",
+        )
+        .run(producerId, userId ?? null, guestId ?? null, buyerName, (subject || "Consulta directa").slice(0, 120), 0, new Date().toISOString());
+    return Number(result.lastInsertRowid);
+}
+
+function createMessage({ threadId, sender, body, productId = null, type = "text", lang = "es" }) {
+    const db = (0, db_1.getDb)();
+    const now = new Date().toISOString();
+    const result = db
+        .prepare("INSERT INTO messages (thread_id,sender,body,product_id,type,lang,created_at) VALUES (?,?,?,?,?,?,?)")
+        .run(threadId, sender, body, productId, type, lang, now);
+    const unreadColumn = sender === "producer" ? "buyer_unread" : "producer_unread";
+    db.prepare(`UPDATE threads SET updated_at = ?, ${unreadColumn} = ${unreadColumn} + 1 WHERE id = ?`).run(now, threadId);
+    return Number(result.lastInsertRowid);
+}
+
+function getMessages(threadId, options = {}) {
+    const limit = Math.min(Math.max(Number(options.limit) || 50, 1), 100);
+    const before = Number(options.before) || null;
+    const rows = (0, db_1.getDb)()
+        .prepare(
+            `SELECT m.id, m.thread_id, m.sender, m.body, m.created_at, m.product_id, m.type, m.lang, m.read_at,
               p.name AS product_name, p.price AS product_price, p.image AS product_image
        FROM messages m LEFT JOIN products p ON p.id = m.product_id
-       WHERE m.thread_id = ? ORDER BY m.id ASC`)
-        .all(threadId));
+       WHERE m.thread_id = ? ${before ? "AND m.id < ?" : ""}
+       ORDER BY m.id DESC LIMIT ?`,
+        )
+        .all(...(before ? [threadId, before, limit + 1] : [threadId, limit + 1]));
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    return { messages: plainList(page).reverse(), hasMore };
 }
+
+function markThreadRead(threadId, viewer) {
+    const db = (0, db_1.getDb)();
+    if (viewer.role === "producer") {
+        db.prepare("UPDATE threads SET producer_unread = 0 WHERE id = ?").run(threadId);
+        db.prepare("UPDATE messages SET read_at = ? WHERE thread_id = ? AND sender IN ('buyer','system') AND read_at IS NULL").run(
+            new Date().toISOString(),
+            threadId,
+        );
+    } else {
+        db.prepare("UPDATE threads SET buyer_unread = 0 WHERE id = ?").run(threadId);
+        db.prepare("UPDATE messages SET read_at = ? WHERE thread_id = ? AND sender = 'producer' AND read_at IS NULL").run(
+            new Date().toISOString(),
+            threadId,
+        );
+    }
+}
+
+function getUnreadCount(viewer) {
+    const clause = viewerClause(viewer);
+    const row = (0, db_1.getDb)()
+        .prepare(`SELECT COALESCE(SUM(${clause.unread}),0) AS n FROM threads t WHERE ${clause.where}`)
+        .get(...clause.params);
+    return Number(row?.n ?? 0);
+}
+
+function saveTranslation(messageId, lang, body, provider) {
+    (0, db_1.getDb)()
+        .prepare(
+            "INSERT INTO message_translations (message_id,lang,body,provider,created_at) VALUES (?,?,?,?,?) ON CONFLICT(message_id,lang) DO UPDATE SET body = excluded.body, provider = excluded.provider",
+        )
+        .run(messageId, lang, body, provider, new Date().toISOString());
+}
+
+function getTranslation(messageId, lang) {
+    return (0, db_1.getDb)()
+        .prepare("SELECT body, provider FROM message_translations WHERE message_id = ? AND lang = ?")
+        .get(messageId, lang);
+}
+
 function getSellerStats(producerId) {
     const db = (0, db_1.getDb)();
     const products = db

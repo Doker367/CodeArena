@@ -1,7 +1,7 @@
 const express = require("express");
 const { getDb } = require("../db");
-const { ensureCart, getSessionUser } = require("../session");
-const { getCart } = require("../queries");
+const { ensureCart, ensureGuest, getSessionUser } = require("../session");
+const { createMessage, createThread, findThread, getCart } = require("../queries");
 
 const router = express.Router();
 
@@ -29,6 +29,9 @@ router.post("/", (req, res) => {
 
   const db = getDb();
   const user = getSessionUser(req);
+  const viewer = user
+    ? { userId: user.id, role: "buyer", name: user.name }
+    : { guestId: ensureGuest(req, res), role: "guest", name: payload.name.trim() };
   const deliveryCost = DELIVERY_COSTS[delivery];
   const subtotal = cart.subtotal;
   const total = subtotal + deliveryCost;
@@ -73,15 +76,24 @@ router.post("/", (req, res) => {
         line.producer.name,
       );
       db.prepare("UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?").run(line.qty, line.product.id);
-      db.prepare(
-        `INSERT INTO messages (thread_id, sender, body, product_id, created_at)
-         SELECT id, 'buyer', ?, ?, ? FROM threads WHERE producer_id = ? LIMIT 1`,
-      ).run(
-        `¡Hola! Acabo de confirmar el pedido ${code} por ${line.qty} × ${line.product.name}. Coordinemos la entrega por aquí.`,
-        line.product.id,
-        new Date().toISOString(),
-        line.producer.id,
-      );
+      let thread = findThread(line.producer.id, viewer);
+      if (!thread) {
+        const threadId = createThread({
+          producerId: line.producer.id,
+          userId: user?.id ?? null,
+          guestId: viewer.guestId,
+          buyerName: payload.name.trim(),
+          subject: `Pedido ${code}`,
+        });
+        thread = { id: threadId };
+      }
+      createMessage({
+        threadId: thread.id,
+        sender: "system",
+        type: "system",
+        body: `Pedido ${code} confirmado: ${line.qty} × ${line.product.name}. Coordina entrega y pago directo con el productor.`,
+        productId: line.product.id,
+      });
     }
     db.prepare("DELETE FROM cart_items WHERE cart_id = ?").run(cartId);
     db.exec("COMMIT");
