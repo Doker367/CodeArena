@@ -1,0 +1,17 @@
+{
+  "name": "@origen/backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API REST Node.js + SQLite para Origen Chiapas",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
