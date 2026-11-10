@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+data/*.db
+data/*.db-wal
+data/*.db-shm
+shots
+.env*.local
+.DS_Store
+next-env.d.ts
+_stitch
+tsconfig.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.example

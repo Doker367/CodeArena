@@ -1,0 +1,301 @@
+@import "tailwindcss";
+
+@theme {
+  /* ===== Origen Chiapas color system (exact Stitch tokens) ===== */
+  --color-surface-container-low: #f5f3ef;
+  --color-inverse-on-surface: #f2f0ed;
+  --color-error: #ba1a1a;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-secondary-fixed-variant: #0e5138;
+  --color-on-background: #1b1c1a;
+  --color-surface-variant: #e4e2de;
+  --color-surface-container-high: #eae8e4;
+  --color-surface-container-highest: #e4e2de;
+  --color-on-primary-fixed: #022015;
+  --color-primary-fixed-dim: #adcebc;
+  --color-tertiary-container: #651300;
+  --color-surface: #fbf9f5;
+  --color-tertiary: #400800;
+  --color-outline-variant: #c2c8c2;
+  --color-tertiary-fixed-dim: #ffb4a2;
+  --color-on-tertiary-fixed: #3c0700;
+  --color-primary-container: #1b382b;
+  --color-on-tertiary-container: #f17758;
+  --color-tertiary-fixed: #ffdad2;
+  --color-secondary-container: #aeeecb;
+  --color-on-primary: #ffffff;
+  --color-on-primary-fixed-variant: #304d3f;
+  --color-primary-fixed: #c9ead7;
+  --color-on-tertiary-fixed-variant: #83260e;
+  --color-secondary-fixed: #b1f0ce;
+  --color-on-primary-container: #82a291;
+  --color-on-secondary-fixed: #002114;
+  --color-on-tertiary: #ffffff;
+  --color-on-secondary-container: #316e52;
+  --color-secondary: #2c694e;
+  --color-secondary-fixed-dim: #95d4b3;
+  --color-error-container: #ffdad6;
+  --color-surface-container: #efeeea;
+  --color-on-surface: #1b1c1a;
+  --color-primary: #042217;
+  --color-inverse-primary: #adcebc;
+  --color-on-surface-variant: #424844;
+  --color-outline: #727974;
+  --color-background: #fbf9f5;
+  --color-on-error: #ffffff;
+  --color-surface-bright: #fbf9f5;
+  --color-on-secondary: #ffffff;
+  --color-surface-dim: #dbdad6;
+  --color-surface-tint: #476556;
+  --color-inverse-surface: #30312e;
+  --color-on-error-container: #93000a;
+  --color-cream: #f4efeb;
+  --color-line: #e8e2d8;
+  --color-pin-ambar: #8e5a00;
+  --color-pin-textil: #5d2879;
+  --color-pin-gastro: #1c5177;
+  --color-pin-miel: #3b6939;
+  --color-pin-cacao: #78350f;
+  --color-pin-laca: #a33419;
+
+  /* ===== Typography ===== */
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --font-headline-lg-mobile: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-headline-sm: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display-lg: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-headline-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display-lg-mobile: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-headline-lg: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-label-sm: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body-sm: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-label-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body-lg: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-title-md: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 56px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 700;
+
+  --text-display-lg-mobile: 32px;
+  --text-display-lg-mobile--line-height: 40px;
+  --text-display-lg-mobile--letter-spacing: -0.01em;
+  --text-display-lg-mobile--font-weight: 700;
+
+  --text-headline-lg: 32px;
+  --text-headline-lg--line-height: 40px;
+  --text-headline-lg--letter-spacing: -0.015em;
+  --text-headline-lg--font-weight: 700;
+
+  --text-headline-lg-mobile: 24px;
+  --text-headline-lg-mobile--line-height: 32px;
+  --text-headline-lg-mobile--letter-spacing: -0.01em;
+  --text-headline-lg-mobile--font-weight: 600;
+
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 32px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+
+  --text-headline-sm: 20px;
+  --text-headline-sm--line-height: 28px;
+  --text-headline-sm--font-weight: 600;
+
+  --text-title-md: 16px;
+  --text-title-md--line-height: 24px;
+  --text-title-md--font-weight: 600;
+
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 15px;
+  --text-body-md--line-height: 22px;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-body-sm--font-weight: 400;
+
+  --text-label-md: 14px;
+  --text-label-md--line-height: 20px;
+  --text-label-md--letter-spacing: 0.01em;
+  --text-label-md--font-weight: 600;
+
+  --text-label-sm: 11px;
+  --text-label-sm--line-height: 16px;
+  --text-label-sm--letter-spacing: 0.03em;
+  --text-label-sm--font-weight: 700;
+
+  /* ===== Spacing scale ===== */
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2.5rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-gutter-mobile: 1rem;
+  --spacing-margin: 2rem;
+  --spacing-margin-mobile: 1rem;
+}
+
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--color-secondary-container);
+    color: var(--color-on-secondary-container);
+  }
+
+  button,
+  a,
+  select,
+  input,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+  }
+
+  input,
+  textarea,
+  select {
+    font-family: inherit;
+  }
+
+  img {
+    max-width: 100%;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+    user-select: none;
+  }
+
+  .fill-1 {
+    font-variation-settings:
+      "FILL" 1,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .card-shadow {
+    box-shadow:
+      0 1px 3px rgba(27, 56, 43, 0.04),
+      0 4px 12px rgba(27, 56, 43, 0.03);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 1px 3px rgba(27, 56, 43, 0.04), 0 4px 12px rgba(27, 56, 43, 0.03);
+  }
+
+  .hairline {
+    border: 1px solid rgba(27, 56, 43, 0.06);
+  }
+
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  }
+}
+
+/* ---------- Animations ---------- */
+@keyframes soft-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-soft-in {
+  animation: soft-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-pop-in {
+  animation: pop-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
