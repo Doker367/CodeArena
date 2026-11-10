@@ -295,7 +295,7 @@ export function SellerPanel({ initial }: { initial: SellerPanelData }) {
       <section className="w-full px-4 lg:px-8 py-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8 flex flex-col gap-6">
-            <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+            <div id="pedidos" className="bg-surface-container-lowest rounded-xl p-6 shadow-sm scroll-mt-40">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4">
                 <div>
                   <h2 className="font-headline-sm text-headline-sm text-primary">Pedidos Recientes</h2>
@@ -378,7 +378,7 @@ export function SellerPanel({ initial }: { initial: SellerPanelData }) {
               </div>
             </div>
 
-            <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+            <div id="catalogo" className="bg-surface-container-lowest rounded-xl p-6 shadow-sm scroll-mt-40">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4">
                 <div>
                   <h2 className="font-headline-sm text-headline-sm text-primary">Mi Catálogo de Productos</h2>

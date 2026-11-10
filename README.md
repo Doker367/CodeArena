@@ -29,8 +29,25 @@ El frontend proxya `/api/*` hacia el backend, por lo que las cookies `httpOnly` 
 | Panel del Emprendedor | `/panel` | Métricas, pedidos, catálogo editable, preguntas, ubicación |
 | Acceso y Registro Multiusuario | `/acceso` | Registro/login real por rol (comprador, productor, eco) |
 | Lenguas Originarias | `/lenguas` | 12 lenguas, estado real de traducción, intérpretes y diccionarios |
+| Inicio | `/` | Landing comunitaria con productores, oficios y lenguas |
+| Mi cuenta | `/cuenta` | Perfil, idioma de interfaz y cierre de sesión |
+| Mis pedidos | `/pedidos` | Historial de pedidos del comprador |
 
-Extras para completar la navegación: `/` (redirige al mercado), `/productores`, `/como-funciona`, `/lenguas`.
+Navegación completa: `/` Inicio, `/productores`, `/como-funciona`, `/lenguas`, `/cuenta`, `/pedidos`.
+
+### Sesión y roles
+
+- La sesión inicia cerrada: el header muestra **Entrar** y desaparece al autenticarse.
+- El **panel del emprendedor** exige sesión de productor (`/panel` redirige a `/acceso?next=/panel`).
+- Cada rol tiene un menú distinto: comprador (perfil, pedidos, favoritos, mensajes), productor (panel, catálogo, pedidos recibidos, mensajes, cuenta), ecoturismo (cuenta, mensajes, lenguas).
+- La API `/api/seller` responde `401` sin sesión de productor.
+
+### Idioma de la interfaz
+
+- Selector global en el header y en `/cuenta` (cookie `oc_lang`).
+- **Español e inglés completos** para navegación, inicio, registro, cuenta, footer y mercado.
+- **Tsotsil y tseltal en beta**: etiquetas breves de navegación y aviso de cobertura parcial; el contenido restante cae a español hasta que hablantes revisen cada variante.
+- El contenido dinámico del mercado (nombres propios y descripciones de productores) se mantiene en español.
 
 ---
 

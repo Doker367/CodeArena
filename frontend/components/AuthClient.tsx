@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "./Logo";
+import { useI18n } from "./I18nProvider";
+import { LANGS } from "@/lib/i18n";
 
 const ROLES = [
   {
@@ -42,8 +44,9 @@ const BENEFITS: Record<string, { title: string; sub: string }[]> = {
   ],
 };
 
-export function AuthClient({ initialRole }: { initialRole?: string }) {
+export function AuthClient({ initialRole, next }: { initialRole?: string; next?: string }) {
   const router = useRouter();
+  const { t, lang, setLang } = useI18n();
   const [tab, setTab] = useState<"crear" | "entrar">("crear");
   const [role, setRole] = useState(
     initialRole === "productor" || initialRole === "eco" ? initialRole : "comprador",
@@ -84,7 +87,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
           setError(data.error ?? "No pudimos iniciar sesión.");
           return;
         }
-        router.push(data.user?.producer_id ? "/panel" : "/marketplace");
+        router.push(next || (data.user?.producer_id ? "/panel" : "/marketplace"));
         router.refresh();
       } else {
         const response = await fetch("/api/auth/register", {
@@ -103,7 +106,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
           setError(data.error ?? "No pudimos crear tu cuenta.");
           return;
         }
-        router.push(role === "productor" ? "/panel" : "/marketplace");
+        router.push(next || (role === "productor" ? "/panel" : "/marketplace"));
         router.refresh();
       }
     } finally {
@@ -135,17 +138,32 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
             <div className="flex flex-col leading-none">
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold tracking-tight text-primary text-lg">ORIGEN CHIAPAS</span>
-                <span className="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-[10px] tracking-wider">
+                <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-[10px] tracking-wider">
                   OFICIAL
                 </span>
               </div>
-              <span className="font-label-sm text-label-sm text-outline mt-1">Comercio Directo &amp; Soberanía Comunitaria</span>
+              <span className="hidden sm:block font-label-sm text-label-sm text-outline mt-1">Comercio Directo &amp; Soberanía Comunitaria</span>
             </div>
           </Link>
-          <Link href="/marketplace" className="inline-flex items-center gap-1 font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Volver al Inicio
-          </Link>
+          <div className="flex items-center gap-2">
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value as typeof lang)}
+              className="px-2 py-1.5 rounded-lg bg-surface-container-low font-label-sm text-label-sm text-primary focus:outline-none"
+              aria-label="Idioma"
+            >
+              {LANGS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <Link href="/marketplace" className="inline-flex items-center gap-1 font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap">
+              <span className="material-symbols-outlined text-base">arrow_back</span>
+              <span className="hidden sm:inline">{t("common.backHome")}</span>
+              <span className="sm:hidden">Inicio</span>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -219,7 +237,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
                 tab === "crear" ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant"
               }`}
             >
-              <span className="material-symbols-outlined text-base">person_add</span> Crear Cuenta
+              <span className="material-symbols-outlined text-base">person_add</span> {t("auth.create")}
             </button>
             <button
               onClick={() => setTab("entrar")}
@@ -227,20 +245,18 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
                 tab === "entrar" ? "bg-surface-container-lowest text-primary shadow-sm" : "text-on-surface-variant"
               }`}
             >
-              <span className="material-symbols-outlined text-base">login</span> Iniciar Sesión
+              <span className="material-symbols-outlined text-base">login</span> {t("auth.login")}
             </button>
           </div>
 
           <div className="text-center mt-5">
-            <h1 className="font-headline-sm text-headline-sm text-primary">Únete a la Red Chiapaneca</h1>
-            <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
-              Elige tu rol para personalizar tu experiencia de compra o producción.
-            </p>
+            <h1 className="font-headline-sm text-headline-sm text-primary">{t("auth.title")}</h1>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">{t("auth.subtitle")}</p>
           </div>
 
           {tab === "crear" && (
             <div className="mt-5">
-              <p className="font-label-md text-label-md text-primary mb-2">Selecciona tu Perfil:</p>
+              <p className="font-label-md text-label-md text-primary mb-2">{t("auth.role")}:</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {ROLES.map((item) => {
                   const active = role === item.key;
@@ -258,7 +274,9 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
                           {active && <span className="w-2 h-2 rounded-full bg-primary" />}
                         </span>
                       </div>
-                      <p className="font-label-md text-label-md text-primary mt-2 font-bold">{item.title}</p>
+                      <p className="font-label-md text-label-md text-primary mt-2 font-bold">
+                        {item.key === "comprador" ? t("auth.buyer") : item.key === "productor" ? t("auth.producer") : t("auth.eco")}
+                      </p>
                       <p className="font-body-sm text-[12px] text-on-surface-variant leading-snug mt-0.5">{item.sub}</p>
                     </button>
                   );
@@ -271,7 +289,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
             {tab === "crear" && (
               <div>
                 <label className="font-label-sm text-label-sm text-on-surface">
-                  Nombre y Apellidos <span className="text-error">*</span>
+                  {t("auth.name")} <span className="text-error">*</span>
                 </label>
                 <div className="relative mt-1">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-base">person</span>
@@ -287,7 +305,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
             <div>
               <div className="flex items-center justify-between">
                 <label className="font-label-sm text-label-sm text-on-surface">
-                  Teléfono WhatsApp o Correo <span className="text-error">*</span>
+                  {t("auth.contact")} <span className="text-error">*</span>
                 </label>
                 {tab === "crear" && (
                   <span className="inline-flex items-center gap-1 font-label-sm text-[11px] text-secondary">
@@ -307,7 +325,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
             </div>
             <div>
               <label className="font-label-sm text-label-sm text-on-surface">
-                Contraseña <span className="text-error">*</span>
+                {t("auth.password")} <span className="text-error">*</span>
               </label>
               <div className="relative mt-1">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-base">lock</span>
@@ -332,11 +350,8 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
                 className="mt-0.5 w-4 h-4 accent-secondary"
               />
               <span className="font-body-sm text-body-sm text-on-surface-variant">
-                <span className="material-symbols-outlined text-secondary text-sm align-text-bottom">check_circle</span> Acepto los{" "}
-                <Link href="/como-funciona#terminos" className="text-primary font-semibold underline">
-                  Términos de Comercio Justo
-                </Link>{" "}
-                y el compromiso de trato directo con las comunidades originarias.
+                <span className="material-symbols-outlined text-secondary text-sm align-text-bottom">check_circle</span>{" "}
+                {t("auth.accept")}
               </span>
             </label>
           )}
@@ -351,7 +366,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
             className="w-full mt-4 py-3 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-bold hover:bg-primary-container transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <span className="material-symbols-outlined text-base">{tab === "entrar" ? "login" : "how_to_reg"}</span>
-            {loading ? "Procesando…" : submitLabel}
+            {loading ? "…" : tab === "entrar" ? t("auth.submitLogin") : submitLabel}
           </button>
 
           <div className="flex items-center gap-3 my-4">
@@ -374,7 +389,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
               onClick={loginDemo}
               className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors"
             >
-              <span className="material-symbols-outlined text-base">account_circle</span> Cuenta demo productor
+              <span className="material-symbols-outlined text-base">account_circle</span> {t("auth.demo")}
             </button>
           </div>
 
@@ -382,7 +397,7 @@ export function AuthClient({ initialRole }: { initialRole?: string }) {
             <div className="flex items-start gap-2">
               <span className="material-symbols-outlined text-secondary text-lg">support_agent</span>
               <div>
-                <p className="font-label-sm text-label-sm text-on-surface">¿Necesitas apoyo asistido para tu registro?</p>
+                <p className="font-label-sm text-label-sm text-on-surface">{t("auth.support")}</p>
                 <p className="font-body-sm text-[12px] text-on-surface-variant">
                   Llama sin costo o manda mensaje a promotores comunitarios.
                 </p>

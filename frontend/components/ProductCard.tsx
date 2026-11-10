@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "./CartProvider";
+import { useI18n } from "./I18nProvider";
 import { money } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
@@ -24,6 +25,7 @@ export function ProductCard({
   variant?: "grid" | "compact";
 }) {
   const { add } = useCart();
+  const { t } = useI18n();
   const router = useRouter();
   const tags = product.tags.split(",").filter(Boolean);
   const topBadge = tags[1] || product.badge || "100% Hecho en Chiapas";
@@ -95,13 +97,13 @@ export function ProductCard({
               }}
               className="py-2 px-space-sm rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-surface-tint transition-colors flex items-center justify-center gap-1"
             >
-              <span className="material-symbols-outlined text-sm">shopping_bag</span> Comprar
+              <span className="material-symbols-outlined text-sm">shopping_bag</span> {t("market.buy")}
             </button>
             <button
               onClick={() => add(product.id)}
               className="py-2 px-space-sm rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md hover:bg-secondary-fixed transition-colors flex items-center justify-center gap-1"
             >
-              <span className="material-symbols-outlined text-sm">add_shopping_cart</span> Carrito
+              <span className="material-symbols-outlined text-sm">add_shopping_cart</span> {t("market.cart")}
             </button>
           </div>
           <Link
@@ -109,7 +111,7 @@ export function ProductCard({
             className="w-full py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-primary font-label-sm text-label-sm flex items-center justify-center gap-1 transition-colors"
           >
             <span className="material-symbols-outlined text-sm">forum</span>
-            {variant === "compact" ? "Preguntar" : "Preguntar al productor"}
+            {variant === "compact" ? t("market.ask") : t("market.ask")}
           </Link>
         </div>
       </div>

@@ -12,13 +12,20 @@ const {
 
 const router = express.Router();
 
-function resolveProducerId(req) {
-  return getSessionUser(req)?.producer_id ?? 1;
+function resolveProducerId(req, res) {
+  const producerId = getSessionUser(req)?.producer_id;
+  if (!producerId) {
+    res.status(401).json({ error: "Inicia sesión con una cuenta de productor para administrar tu negocio." });
+    return null;
+  }
+  return producerId;
 }
 
 router.get("/", (req, res) => {
-  const producerId = resolveProducerId(req);
-  const producer = getProducerById(producerId) ?? getProducerById(1);
+  const producerId = resolveProducerId(req, res);
+  if (!producerId) return;
+  const producer = getProducerById(producerId);
+  if (!producer) return res.status(404).json({ error: "Negocio no encontrado" });
   const products = getProducerProducts(producer.id);
   const orders = getOrdersForProducer(producer.id);
   res.json({
@@ -31,11 +38,12 @@ router.get("/", (req, res) => {
 });
 
 router.post("/", (req, res) => {
+  const producerId = resolveProducerId(req, res);
+  if (!producerId) return;
   const body = req.body ?? {};
   if (!body.name?.trim() || !body.price || Number(body.price) <= 0) {
     return res.status(400).json({ error: "Nombre y precio válidos son requeridos." });
   }
-  const producerId = resolveProducerId(req);
   const db = getDb();
   const slug = `${slugify(body.name)}-${Date.now().toString(36).slice(-4)}`;
   const image = body.image?.startsWith("/img/") ? body.image : "/img/img-24.jpg";
@@ -67,9 +75,10 @@ router.post("/", (req, res) => {
 });
 
 router.patch("/", (req, res) => {
+  const producerId = resolveProducerId(req, res);
+  if (!producerId) return;
   const { id, status, price, stock } = req.body ?? {};
   if (!id) return res.status(400).json({ error: "id es requerido" });
-  const producerId = resolveProducerId(req);
   const db = getDb();
   const product = db.prepare("SELECT id FROM products WHERE id = ? AND producer_id = ?").get(id, producerId);
   if (!product) return res.status(404).json({ error: "Producto no encontrado" });

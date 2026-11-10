@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "./CartProvider";
+import { useI18n } from "./I18nProvider";
 import { ProductCard } from "./ProductCard";
 import { money } from "@/lib/format";
 import type { Producer, Product } from "@/lib/types";
@@ -48,6 +49,7 @@ export function MarketplaceView({
 }) {
   const router = useRouter();
   const { add } = useCart();
+  const { t } = useI18n();
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState(initialCategory);
   const [sort, setSort] = useState("populares");
@@ -153,12 +155,11 @@ export function MarketplaceView({
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm uppercase tracking-wider mb-space-sm">
                 <span className="material-symbols-outlined text-sm">handshake</span>
-                Comercio Comunitario y Directo
+                {t("market.badge")}
               </div>
-              <h1 className="font-display-lg text-display-lg text-primary tracking-tight">Mercado Directo de Chiapas</h1>
+              <h1 className="font-display-lg text-display-lg text-primary tracking-tight">{t("market.title")}</h1>
               <p className="font-body-lg text-body-lg text-on-surface-variant mt-space-xs">
-                Comercio justo sin comisiones de intermediarios. Precios directos de taller, parcela y telar a tu
-                hogar.
+                {t("market.subtitle")}
               </p>
             </div>
             <div className="flex items-center gap-space-md bg-surface-container-lowest p-space-md rounded-xl shadow-sm self-start md:self-auto">
@@ -186,7 +187,7 @@ export function MarketplaceView({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full bg-transparent font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none"
-                placeholder="Buscar por técnica, variedad (ej. Typica, Ámbar rojo, telar de pedal) o cooperativa..."
+                placeholder={t("market.search")}
                 type="text"
                 aria-label="Buscar en el mercado"
               />
@@ -198,11 +199,11 @@ export function MarketplaceView({
                 onChange={(e) => setSort(e.target.value)}
                 className="w-full lg:w-auto bg-surface-container-lowest font-label-md text-label-md text-primary px-3 py-2 rounded-lg cursor-pointer focus:outline-none shadow-sm"
               >
-                <option value="populares">Más populares</option>
-                <option value="nuevos">Recién cosechados / agregados</option>
-                <option value="precio-asc">Menor precio primero</option>
-                <option value="precio-desc">Mayor precio primero</option>
-                <option value="rating">Mejor valorados</option>
+                <option value="populares">{t("market.popular")}</option>
+                <option value="nuevos">{t("market.new")}</option>
+                <option value="precio-asc">{t("market.priceAsc")}</option>
+                <option value="precio-desc">{t("market.priceDesc")}</option>
+                <option value="rating">{t("market.rating")}</option>
               </select>
             </div>
           </div>
@@ -236,7 +237,7 @@ export function MarketplaceView({
             <div className="bg-primary-container text-on-primary-container px-space-lg py-2 flex items-center justify-between">
               <div className="flex items-center gap-2 font-label-sm text-label-sm uppercase tracking-widest text-primary-fixed">
                 <span className="material-symbols-outlined text-base text-secondary-fixed">auto_awesome</span>
-                Pieza Maestra del Mes • Trato Directo Garantizado
+                {t("market.piece")} • {t("market.direct")}
               </div>
               <span className="hidden sm:inline font-label-sm text-label-sm text-primary-fixed-dim">
                 Simojovel &amp; Los Altos de Chiapas
@@ -340,7 +341,7 @@ export function MarketplaceView({
                         <span className="font-label-md text-label-md text-on-surface-variant"> MXN</span>
                       </div>
                       <span className="px-2 py-1 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold">
-                        Precio de Taller
+                        {t("market.workshopPrice")}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 font-label-sm text-label-sm text-secondary">
@@ -457,17 +458,17 @@ export function MarketplaceView({
             <div className="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col gap-space-lg sticky top-32">
               <div className="flex items-center justify-between pb-space-sm">
                 <span className="font-title-md text-title-md text-primary flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-lg text-secondary">tune</span> Filtros Facetados
+                  <span className="material-symbols-outlined text-lg text-secondary">tune</span> {t("market.filters")}
                 </span>
                 <button onClick={reset} className="font-label-sm text-label-sm text-secondary hover:underline">
-                  Limpiar todo
+                  {t("market.clear")}
                 </button>
               </div>
 
               <div className="space-y-space-xs">
                 <div className="flex items-center justify-between">
                   <label htmlFor="price" className="font-label-md text-label-md text-primary">
-                    Rango de Precio
+                    {t("market.price")}
                   </label>
                   <span className="font-label-sm text-label-sm text-on-surface-variant font-bold">
                     $120 — {money(maxPrice)} MXN
@@ -489,7 +490,7 @@ export function MarketplaceView({
               </div>
 
               <div className="space-y-space-xs">
-                <label className="font-label-md text-label-md text-primary">Municipio de Origen</label>
+                <label className="font-label-md text-label-md text-primary">{t("market.municipality")}</label>
                 <div className="space-y-2 mt-2 max-h-48 overflow-y-auto pr-1">
                   {MUNICIPALITIES.map(([name, count]) => (
                     <label key={name} className="flex items-center justify-between cursor-pointer group">
@@ -509,12 +510,12 @@ export function MarketplaceView({
               </div>
 
               <div className="space-y-space-xs">
-                <label className="font-label-md text-label-md text-primary">Disponibilidad</label>
+                <label className="font-label-md text-label-md text-primary">{t("market.availability")}</label>
                 <div className="space-y-2 mt-2">
                   {[
-                    ["todas", "Cualquier disponibilidad"],
-                    ["stock", "En stock inmediato (Listo para envío)"],
-                    ["pedido", "Sobre pedido artesanal personalizado"],
+                    ["todas", t("market.any")],
+                    ["stock", t("market.inStock")],
+                    ["pedido", t("market.onOrder")],
                   ].map(([value, label]) => (
                     <label key={value} className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -531,12 +532,12 @@ export function MarketplaceView({
               </div>
 
               <div className="space-y-space-xs">
-                <label className="font-label-md text-label-md text-primary">Tipo de Productor</label>
+                <label className="font-label-md text-label-md text-primary">{t("market.producerType")}</label>
                 <div className="space-y-2 mt-2">
                   {[
-                    ["cooperativa", "Cooperativa Indígena"],
-                    ["familia", "Familia Artesana Independiente"],
-                    ["micro", "Micronegocio Local Registrado"],
+                    ["cooperativa", t("market.coop")],
+                    ["familia", t("market.family")],
+                    ["micro", t("market.micro")],
                   ].map(([key, label]) => (
                     <label key={key} className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -553,11 +554,10 @@ export function MarketplaceView({
 
               <div className="p-space-md rounded-xl bg-secondary-container/40 text-on-secondary-container">
                 <div className="flex items-center gap-2 font-label-md text-label-md font-bold mb-1">
-                  <span className="material-symbols-outlined text-lg">verified_user</span> Sin intermediarios
+                  <span className="material-symbols-outlined text-lg">verified_user</span> {t("market.commissionTitle")}
                 </div>
                 <p className="font-body-sm text-body-sm text-on-secondary-fixed-variant">
-                  Tus pagos se liberan directamente a las cuentas bancarias o cooperativas comunitarias de los
-                  productores.
+                  {t("market.commissionText")}
                 </p>
               </div>
             </div>
@@ -566,9 +566,9 @@ export function MarketplaceView({
           <div className="lg:col-span-9 flex flex-col gap-space-lg">
             <div className="flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
               <div className="flex items-center gap-2">
-                <span className="font-title-md text-title-md text-primary">{filtered.length} Productos Encontrados</span>
+                <span className="font-title-md text-title-md text-primary">{filtered.length} {t("market.found")}</span>
                 <span className="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
-                  Mostrando {rangeStart} - {rangeEnd}
+                  {t("market.showing")} {rangeStart} - {rangeEnd}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -591,9 +591,9 @@ export function MarketplaceView({
             {filtered.length === 0 ? (
               <div className="bg-surface-container-lowest rounded-xl p-space-xl text-center shadow-sm">
                 <span className="material-symbols-outlined text-4xl text-outline">search_off</span>
-                <h3 className="font-headline-sm text-headline-sm text-primary mt-2">No encontramos coincidencias</h3>
+                <h3 className="font-headline-sm text-headline-sm text-primary mt-2">{t("market.none")}</h3>
                 <p className="font-body-md text-body-md text-on-surface-variant">
-                  Ajusta la búsqueda, el rango de precio o los municipios seleccionados.
+                  {t("market.noneSub")}
                 </p>
                 <button
                   onClick={reset}
@@ -612,7 +612,7 @@ export function MarketplaceView({
 
             <div className="flex flex-wrap items-center justify-between gap-2 bg-surface-container-lowest rounded-xl px-space-md py-3 shadow-sm">
               <span className="font-label-sm text-label-sm text-outline">
-                Página {currentPage} de {pages} <span className="hidden sm:inline">• Actualizado hace 15 minutos</span>
+                {t("market.page")} {currentPage} / {pages} <span className="hidden sm:inline">• Actualizado hace 15 minutos</span>
               </span>
               <div className="flex items-center gap-1">
                 <button
@@ -620,7 +620,7 @@ export function MarketplaceView({
                   disabled={currentPage === 1}
                   className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface-container text-primary font-label-sm text-label-sm disabled:text-outline disabled:cursor-not-allowed"
                 >
-                  Anterior
+                  {t("market.previous")}
                 </button>
                 {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
                   <button
@@ -638,7 +638,7 @@ export function MarketplaceView({
                   disabled={currentPage === pages}
                   className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface-container text-primary font-label-sm text-label-sm disabled:text-outline disabled:cursor-not-allowed"
                 >
-                  Siguiente
+                  {t("market.next")}
                 </button>
               </div>
             </div>

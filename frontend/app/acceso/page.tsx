@@ -9,12 +9,12 @@ export const metadata: Metadata = {
 export default async function AccesoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ rol?: string }>;
+  searchParams: Promise<{ rol?: string; next?: string }>;
 }) {
   const params = await searchParams;
   return (
     <main className="w-full">
-      <AuthClient initialRole={params.rol} />
+      <AuthClient initialRole={params.rol} next={params.next} />
     </main>
   );
 }

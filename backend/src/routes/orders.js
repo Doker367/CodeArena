@@ -115,8 +115,12 @@ router.post("/", (req, res) => {
 router.get("/", (req, res) => {
   const user = getSessionUser(req);
   if (!user) return res.json({ orders: [] });
-  const orders = getDb().prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC").all(user.id);
-  res.json({ orders });
+  const db = getDb();
+  const orders = db.prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC").all(user.id);
+  const items = db.prepare(
+    "SELECT name,price,qty,image,producer_name FROM order_items WHERE order_id = ? ORDER BY id ASC",
+  );
+  res.json({ orders: orders.map((order) => ({ ...order, items: items.all(order.id) })) });
 });
 
 module.exports = router;

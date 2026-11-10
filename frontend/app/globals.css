@@ -251,6 +251,23 @@
     border: 1px solid rgba(27, 56, 43, 0.06);
   }
 
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.01em;
+    font-weight: 600;
+    color: var(--color-on-surface);
+    transition: background-color 0.15s ease;
+  }
+  .menu-item:hover {
+    background-color: var(--color-surface-container-low);
+  }
+
   .grain::after {
     content: "";
     position: absolute;

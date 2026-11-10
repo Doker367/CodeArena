@@ -37,7 +37,7 @@ export function LogoWordmark({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <Logo className="h-9 w-9" />
-      <span className="flex flex-col leading-none">
+      <span className="hidden sm:flex flex-col leading-none">
         <span className="font-extrabold tracking-tight text-primary text-[19px] leading-none">
           ORIGEN
         </span>
