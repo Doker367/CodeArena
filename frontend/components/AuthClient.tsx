@@ -53,13 +53,21 @@ export function AuthClient({ initialRole, next }: { initialRole?: string; next?:
   );
   const [form, setForm] = useState({ name: "", contact: "", password: "" });
   const [accepted, setAccepted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
     setError("");
-    if (!form.contact.trim() || !form.password) {
+    const contact = form.contact.trim();
+    const digits = contact.replace(/\D/g, "");
+    const isEmail = contact.includes("@");
+    if (!contact || !form.password) {
       setError("Ingresa tus datos de contacto y contraseña.");
+      return;
+    }
+    if (!isEmail && digits.length < 10) {
+      setError("Ingresa un WhatsApp a 10 dígitos o un correo electrónico válido.");
       return;
     }
     if (tab === "crear" && !form.name.trim()) {
@@ -72,43 +80,33 @@ export function AuthClient({ initialRole, next }: { initialRole?: string; next?:
     }
     setLoading(true);
     try {
-      const isEmail = form.contact.includes("@");
-      if (tab === "entrar") {
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            identifier: form.contact,
-            password: form.password,
-          }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          setError(data.error ?? "No pudimos iniciar sesión.");
-          return;
-        }
-        router.push(next || (data.user?.producer_id ? "/panel" : "/marketplace"));
-        router.refresh();
-      } else {
-        const response = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: form.name,
-            email: isEmail ? form.contact : `${form.contact.replace(/\D/g, "")}@whatsapp.origenchiapas.mx`,
-            phone: form.contact,
-            password: form.password,
-            role,
-          }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          setError(data.error ?? "No pudimos crear tu cuenta.");
-          return;
-        }
-        router.push(next || (role === "productor" ? "/panel" : "/marketplace"));
-        router.refresh();
+      const url = tab === "entrar" ? "/api/auth/login" : "/api/auth/register";
+      const body =
+        tab === "entrar"
+          ? { identifier: contact, password: form.password }
+          : {
+              name: form.name.trim(),
+              email: isEmail ? contact : `${digits}@whatsapp.origenchiapas.mx`,
+              phone: isEmail ? "" : contact,
+              password: form.password,
+              role,
+            };
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error ?? "No pudimos completar la solicitud.");
+        return;
       }
+      const target = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+      const producerId = data.user?.producer_id ?? null;
+      router.push(target || (producerId ? "/panel" : "/marketplace"));
+      router.refresh();
+    } catch {
+      setError("No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -332,11 +330,20 @@ export function AuthClient({ initialRole, next }: { initialRole?: string; next?:
                 <input
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Mínimo 6 caracteres"
                   className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-line bg-surface-container-lowest font-body-sm text-body-sm focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary"
                 />
-                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-base">visibility</span>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-primary"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
               </div>
             </div>
           </div>

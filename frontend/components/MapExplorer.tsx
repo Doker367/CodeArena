@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MAP_SVG } from "./map-svg";
 import type { Producer } from "@/lib/types";
 import { money } from "@/lib/format";
+import { distanceKm, formatDistance, producerCoords, projectToMap, type Coords } from "@/lib/geo";
 
 type Pin = {
   id: string;
@@ -138,6 +139,17 @@ const CATEGORY_CHIPS = [
   { key: "miel", label: "Miel Melipona", icon: "hive" },
 ];
 
+type GeoStatus = "idle" | "loading" | "ready" | "denied" | "unsupported" | "error";
+
+type GeoState = {
+  status: GeoStatus;
+  coords: Coords | null;
+  accuracy: number | null;
+  message: string;
+};
+
+const INITIAL_GEO: GeoState = { status: "idle", coords: null, accuracy: null, message: "" };
+
 export function MapExplorer({ producers }: { producers: Producer[] }) {
   const [query, setQuery] = useState("");
   const [muni, setMuni] = useState("Todos");
@@ -150,25 +162,124 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
   const [hoverPin, setHoverPin] = useState<string | null>(null);
   const [layer, setLayer] = useState("Topográfico");
   const [zoom, setZoom] = useState(1);
+  const [geo, setGeo] = useState<GeoState>(INITIAL_GEO);
+  const [sort, setSort] = useState<"relevancia" | "rating" | "cercania">("relevancia");
 
-  const cards = useMemo(
-    () =>
-      producers
-        .filter((p) => {
-          if (p.category === "cacao") return false;
-          if (!["cafe", "ambar", "textil", "gastronomia", "miel"].includes(p.category)) return false;
-          if (category !== "todos" && p.category !== category) return false;
-          if (muni !== "Todos" && !p.municipality.toLowerCase().includes(muni.split(" ")[0].toLowerCase())) return false;
-          if (query && !`${p.name} ${p.municipality} ${p.about}`.toLowerCase().includes(query.toLowerCase())) return false;
-          return true;
-        })
-        .slice(0, 8),
-    [producers, category, muni, query],
+  const locate = useCallback(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeo({ status: "unsupported", coords: null, accuracy: null, message: "Tu navegador no permite geolocalización." });
+      return;
+    }
+    setGeo((prev) => ({ ...prev, status: "loading", message: "" }));
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGeo({
+          status: "ready",
+          coords: { lat: position.coords.latitude, lng: position.coords.longitude },
+          accuracy: position.coords.accuracy,
+          message: "",
+        });
+        setSort("cercania");
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setGeo({
+            status: "denied",
+            coords: null,
+            accuracy: null,
+            message: "Bloqueaste la ubicación. Actívala en el candado del navegador y vuelve a intentar.",
+          });
+        } else if (error.code === error.TIMEOUT) {
+          setGeo({
+            status: "error",
+            coords: null,
+            accuracy: null,
+            message: "No pudimos obtener tu ubicación a tiempo. Intenta de nuevo.",
+          });
+        } else {
+          setGeo({
+            status: "error",
+            coords: null,
+            accuracy: null,
+            message: "No pudimos leer tu ubicación. Revisa que el GPS o la red estén activos.",
+          });
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 120000 },
+    );
+  }, []);
+
+  // Al entrar al mapa pedimos la ubicación real para mostrar lo más cercano.
+  useEffect(() => {
+    locate();
+  }, [locate]);
+
+  const userCoords = geo.coords;
+
+  // Al detectar tu ubicación, abrimos el micronegocio más cercano del mapa.
+  useEffect(() => {
+    if (!userCoords) return;
+    let closest: { id: string; km: number } | null = null;
+    for (const pin of PINS) {
+      const producer = producers.find((p) => p.slug === pin.slug);
+      if (!producer) continue;
+      const km = distanceKm(userCoords, producerCoords(producer.slug, producer.municipality));
+      if (!closest || km < closest.km) closest = { id: pin.id, km };
+    }
+    if (closest) setActivePin(closest.id);
+  }, [userCoords, producers]);
+
+  const distanceFor = useCallback(
+    (producer: Producer) => {
+      if (!userCoords) return null;
+      return distanceKm(userCoords, producerCoords(producer.slug, producer.municipality));
+    },
+    [userCoords],
   );
+
+  const cards = useMemo(() => {
+    const list = producers
+      .filter((p) => {
+        if (p.category === "cacao") return false;
+        if (!["cafe", "ambar", "textil", "gastronomia", "miel"].includes(p.category)) return false;
+        if (category !== "todos" && p.category !== category) return false;
+        if (muni !== "Todos" && !p.municipality.toLowerCase().includes(muni.split(" ")[0].toLowerCase())) return false;
+        if (query && !`${p.name} ${p.municipality} ${p.about}`.toLowerCase().includes(query.toLowerCase())) return false;
+        return true;
+      })
+      .map((p) => ({ producer: p, distance: distanceFor(p) }));
+
+    if (sort === "cercania" && userCoords) {
+      list.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    } else if (sort === "rating") {
+      list.sort((a, b) => b.producer.rating - a.producer.rating);
+    }
+
+    return list.slice(0, 8);
+  }, [producers, category, muni, query, sort, userCoords, distanceFor]);
+
+  const nearbyCount = useMemo(() => {
+    if (!userCoords) return 0;
+    return producers.filter((p) => {
+      if (p.category === "cacao") return false;
+      if (!["cafe", "ambar", "textil", "gastronomia", "miel"].includes(p.category)) return false;
+      const km = distanceFor(p);
+      return km !== null && km <= 50;
+    }).length;
+  }, [producers, userCoords, distanceFor]);
 
   const active = PINS.find((p) => p.id === activePin) ?? null;
   const activeProducer = active ? producers.find((p) => p.slug === active.slug) : null;
+  const activeDistance = activeProducer ? distanceFor(activeProducer) : null;
   const highlighted = hoverPin ?? activePin;
+  const userMarker = userCoords ? projectToMap(userCoords) : null;
+  const routeHref = (() => {
+    if (!activeProducer) return "https://www.google.com/maps/search/?api=1&query=Chiapas";
+    const target = producerCoords(activeProducer.slug, activeProducer.municipality);
+    const params = new URLSearchParams({ api: "1", destination: `${target.lat},${target.lng}`, travelmode: "driving" });
+    if (userCoords) params.set("origin", `${userCoords.lat},${userCoords.lng}`);
+    return `https://www.google.com/maps/dir/?${params.toString()}`;
+  })();
 
   return (
     <div className="flex flex-col w-full">
@@ -219,6 +330,68 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
                   />
                   <span className="material-symbols-outlined text-outline text-lg">tune</span>
                 </div>
+
+                <div
+                  className={`flex items-start gap-2 rounded-lg px-3 py-2 border ${
+                    geo.status === "ready"
+                      ? "bg-secondary-container/50 border-secondary/30"
+                      : geo.status === "denied" || geo.status === "error" || geo.status === "unsupported"
+                        ? "bg-amber-50 border-amber-300/60"
+                        : "bg-surface-container-low border-line"
+                  }`}
+                >
+                  {geo.status === "ready" ? (
+                    <span className="material-symbols-outlined text-lg text-secondary">my_location</span>
+                  ) : geo.status === "loading" || geo.status === "idle" ? (
+                    <span className="material-symbols-outlined text-lg text-secondary animate-spin">progress_activity</span>
+                  ) : (
+                    <span className="material-symbols-outlined text-lg text-amber-700">location_off</span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-label-sm text-label-sm text-on-surface leading-tight">
+                      {geo.status === "ready"
+                        ? `Usando tu ubicación real${sort === "cercania" ? " · ordenado por cercanía" : ""}`
+                        : geo.status === "loading" || geo.status === "idle"
+                          ? "Obteniendo tu ubicación para mostrarte lo más cercano…"
+                          : geo.status === "denied"
+                            ? "Ubicación bloqueada"
+                            : geo.status === "unsupported"
+                              ? "Geolocalización no disponible"
+                              : "No pudimos obtener tu ubicación"}
+                    </p>
+                    <p className="font-body-sm text-[11px] text-on-surface-variant leading-tight mt-0.5">
+                      {geo.status === "ready"
+                        ? (nearbyCount > 0
+                            ? `${nearbyCount} micronegocios a menos de 50 km`
+                            : "No hay micronegocios a menos de 50 km · te mostramos los más cercanos") +
+                          (geo.accuracy ? ` · precisión ±${Math.round(geo.accuracy)} m` : "")
+                        : geo.message ||
+                          (geo.status === "loading"
+                            ? "Acepta el permiso del navegador; no guardamos tu posición."
+                            : "Activa el permiso de ubicación para ver distancias y negocios cercanos.")}
+                    </p>
+                  </div>
+                  {geo.status === "ready" ? (
+                    <button
+                      onClick={locate}
+                      className="shrink-0 p-1 rounded text-secondary hover:bg-secondary/10"
+                      title="Actualizar mi ubicación"
+                      aria-label="Actualizar mi ubicación"
+                    >
+                      <span className="material-symbols-outlined text-base">refresh</span>
+                    </button>
+                  ) : geo.status === "unsupported" ? null : (
+                    <button
+                      onClick={locate}
+                      disabled={geo.status === "loading"}
+                      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded bg-primary text-on-primary font-label-sm text-[11px] hover:bg-surface-tint disabled:opacity-60"
+                    >
+                      <span className="material-symbols-outlined text-xs">my_location</span>
+                      Reintentar
+                    </button>
+                  )}
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-label-sm text-label-sm text-outline uppercase tracking-wide">Municipios con productores</span>
@@ -282,18 +455,30 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
 
               <div className="px-3.5 py-2 bg-surface-container-low flex items-center justify-between">
                 <span className="font-label-sm text-label-sm text-on-surface">
-                  <strong className="text-primary">87 negocios</strong>
-                  <span className="text-outline"> en la región seleccionada</span>
+                  <strong className="text-primary">
+                    {userCoords ? `${nearbyCount} negocios` : `${cards.length} negocios`}
+                  </strong>
+                  <span className="text-outline">
+                    {userCoords ? " a menos de 50 km de ti" : " en la región seleccionada"}
+                  </span>
                 </span>
-                <select className="bg-transparent font-label-sm text-label-sm text-primary focus:outline-none cursor-pointer">
-                  <option>Relevancia cultural</option>
-                  <option>Mejor valorados</option>
-                  <option>Cercanía</option>
+                <select
+                  value={sort}
+                  onChange={(event) => {
+                    const value = event.target.value as typeof sort;
+                    setSort(value);
+                    if (value === "cercania" && !userCoords) locate();
+                  }}
+                  className="bg-transparent font-label-sm text-label-sm text-primary focus:outline-none cursor-pointer"
+                >
+                  <option value="relevancia">Relevancia cultural</option>
+                  <option value="rating">Mejor valorados</option>
+                  <option value="cercania">Cercanía</option>
                 </select>
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-                {cards.map((p) => {
+                {cards.map(({ producer: p, distance }) => {
                   const pin = PINS.find((x) => x.slug === p.slug);
                   return (
                     <article
@@ -342,8 +527,14 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
                             <h3 className="font-title-md text-title-md text-primary font-bold leading-tight truncate">{p.name}</h3>
                             <p className="font-body-sm text-body-sm text-outline truncate flex items-center gap-1 mt-0.5">
                               <span className="material-symbols-outlined text-xs text-secondary">location_on</span>
-                              <span>{p.municipality} • {p.region}</span>
+                              <span className="truncate">{p.municipality} • {p.region}</span>
                             </p>
+                            {distance !== null && (
+                              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-secondary-container/60 text-on-secondary-container font-label-sm text-[10px]">
+                                <span className="material-symbols-outlined text-[11px]">near_me</span>
+                                {formatDistance(distance)}
+                              </span>
+                            )}
                           </div>
                           <div className="pt-1.5">
                             <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">
@@ -378,7 +569,10 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
               </div>
 
               <div className="p-3 bg-surface-container flex items-center justify-between shrink-0">
-                <span className="font-label-sm text-label-sm text-outline">Mostrando 1 - {cards.length} de 87 productores</span>
+                <span className="font-label-sm text-label-sm text-outline">
+                  Mostrando {cards.length ? `1 - ${cards.length}` : "0"} de {producers.length} productores
+                  {userCoords ? " · por cercanía" : ""}
+                </span>
                 <div className="flex items-center gap-1">
                   <button className="p-1 rounded bg-surface-container-lowest text-on-surface-variant hover:text-primary">
                     <span className="material-symbols-outlined text-sm">chevron_left</span>
@@ -437,6 +631,21 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
                       </div>
                     );
                   })}
+
+                  {userMarker && (
+                    <div
+                      className="absolute -translate-x-1/2 -translate-y-1/2"
+                      style={{ top: `${userMarker.top}%`, left: `${userMarker.left}%`, zIndex: 35 }}
+                    >
+                      <span className="absolute -inset-4 rounded-full bg-[#1C5177]/20 animate-ping" />
+                      <span className="relative flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-[#1C5177] text-white shadow-lg">
+                        <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center">
+                          <span className="material-symbols-outlined text-[13px] text-[#1C5177]">my_location</span>
+                        </span>
+                        <span className="font-label-sm text-[11px] whitespace-nowrap">Tu ubicación</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {active && (
@@ -484,6 +693,12 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
                           <div className="flex items-center gap-1 font-body-sm text-xs text-outline">
                             <span className="material-symbols-outlined text-sm text-secondary">location_on</span>
                             <span className="truncate">{activeProducer?.municipality ?? "Chiapas"}</span>
+                            {activeDistance !== null && (
+                              <span className="ml-auto shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary-container/70 text-on-secondary-container font-label-sm text-[10px]">
+                                <span className="material-symbols-outlined text-[11px]">near_me</span>
+                                {formatDistance(activeDistance)}
+                              </span>
+                            )}
                           </div>
                           <p className="font-body-sm text-xs text-on-surface-variant line-clamp-2">
                             <strong className="text-primary font-semibold">Producto estrella:</strong> {active.product}
@@ -506,7 +721,7 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
                             <span>Ver perfil</span>
                           </Link>
                           <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeProducer?.municipality ?? "Chiapas")}`}
+                            href={routeHref}
                             target="_blank"
                             rel="noreferrer"
                             className="flex items-center justify-center gap-1 py-1.5 px-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary font-label-sm text-xs transition-colors"
@@ -547,9 +762,16 @@ export function MapExplorer({ producers }: { producers: Producer[] }) {
 
                 <div className="absolute bottom-5 right-5 z-30 flex flex-col gap-2">
                   <button
-                    onClick={() => setZoom(1)}
-                    className="w-10 h-10 rounded-xl bg-surface-container-lowest shadow-lg text-primary hover:text-secondary hover:bg-surface-container-low transition-colors flex items-center justify-center"
-                    title="Centrar en mi ubicación"
+                    onClick={() => {
+                      locate();
+                      setZoom((z) => Math.min(1.6, Math.max(1.1, z)));
+                    }}
+                    className={`w-10 h-10 rounded-xl shadow-lg transition-colors flex items-center justify-center ${
+                      userCoords
+                        ? "bg-[#1C5177] text-white hover:bg-[#143d5b]"
+                        : "bg-surface-container-lowest text-primary hover:text-secondary hover:bg-surface-container-low"
+                    }`}
+                    title={userCoords ? "Centrar en mi ubicación" : "Usar mi ubicación real"}
                   >
                     <span className="material-symbols-outlined text-xl">my_location</span>
                   </button>

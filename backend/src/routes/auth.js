@@ -11,17 +11,39 @@ function hashPassword(password) {
   return `${salt}:${hash}`;
 }
 
+function normalizePhone(value) {
+  const raw = String(value ?? "").trim();
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  return `${raw.startsWith("+") ? "+" : ""}${digits}`;
+}
+
+// Deja solo dígitos y compara los últimos 10: tolera espacios, guiones,
+// paréntesis y lada de país (+52) al iniciar sesión.
+function phoneDigitsSql(column) {
+  return `replace(replace(replace(replace(replace(${column},' ',''),'-',''),'(',''),')',''),'+','')`;
+}
+function phoneMatchSql(column) {
+  return `substr(${phoneDigitsSql(column)}, -10) = substr(?, -10)`;
+}
+function phoneDigits(value) {
+  return normalizePhone(value).replace(/\D/g, "");
+}
+
 router.post("/login", (req, res) => {
   const { identifier, email, password } = req.body ?? {};
   const login = String(identifier ?? email ?? "").trim();
   if (!login || !password) {
     return res.status(400).json({ error: "Ingresa tu correo o WhatsApp y contraseña." });
   }
+  const phone = phoneDigits(login);
   const user = getDb()
     .prepare(
-      "SELECT id,name,email,phone,role,producer_id,password_hash FROM users WHERE lower(email) = lower(?) OR phone = ? OR phone = ?",
+      `SELECT id,name,email,phone,role,producer_id,password_hash FROM users
+       WHERE lower(email) = lower(?)
+          OR (? <> '' AND ${phoneMatchSql("phone")})`,
     )
-    .get(login, login, login.replace(/[^0-9+]/g, ""));
+    .get(login, phone, phone);
   if (!user || !verifyPassword(password, user.password_hash)) {
     return res.status(401).json({ error: "Correo o contraseña incorrectos." });
   }
@@ -41,27 +63,34 @@ router.post("/login", (req, res) => {
 router.post("/register", (req, res) => {
   const body = req.body ?? {};
   const role = ["comprador", "productor", "eco"].includes(body.role) ? body.role : "comprador";
-  if (!body.name?.trim() || !body.email?.trim() || !body.phone?.trim() || !body.password) {
-    return res.status(400).json({ error: "Completa tu nombre, teléfono, correo y contraseña." });
+  const name = String(body.name ?? "").trim();
+  const email = String(body.email ?? "").trim();
+  const phone = normalizePhone(body.phone);
+  if (!name || !email || !body.password) {
+    return res.status(400).json({ error: "Completa tu nombre, correo y contraseña." });
   }
   if (body.password.length < 6) {
     return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
   }
-  if (!/^\S+@\S+\.\S+$/.test(body.email)) {
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
     return res.status(400).json({ error: "Ingresa un correo electrónico válido." });
   }
 
   const db = getDb();
   const existing = db
-    .prepare("SELECT id FROM users WHERE lower(email) = lower(?) OR phone = ?")
-    .get(body.email.trim(), body.phone.trim());
+    .prepare(
+      `SELECT id FROM users
+       WHERE lower(email) = lower(?)
+          OR (? <> '' AND ${phoneMatchSql("phone")})`,
+    )
+    .get(email, phoneDigits(phone), phoneDigits(phone));
   if (existing) {
     return res.status(409).json({ error: "Ya existe una cuenta con este correo o WhatsApp. Inicia sesión." });
   }
 
   let producerId = null;
   if (role === "productor") {
-    const base = slugify(body.name) || "emprendimiento";
+    const base = slugify(name) || "emprendimiento";
     const slug = `${base}-${newToken().slice(0, 5)}`;
     const result = db
       .prepare(
@@ -70,7 +99,7 @@ router.post("/register", (req, res) => {
       )
       .run(
         slug,
-        body.name.trim(),
+        name.slice(0, 120),
         "Emprendimiento en verificación",
         "San Cristóbal de Las Casas",
         "Los Altos",
@@ -81,8 +110,8 @@ router.post("/register", (req, res) => {
         "Este emprendimiento acaba de unirse a Origen Chiapas.",
         "/img/img-01.jpg",
         "/img/img-08.jpg",
-        body.phone,
-        body.phone,
+        phone || email,
+        phone || email,
         "Lunes a Sábado 08:00–18:00",
         "Entrega local y envío nacional",
         "Nuevo",
@@ -94,9 +123,9 @@ router.post("/register", (req, res) => {
   const insert = db
     .prepare("INSERT INTO users (name,email,phone,password_hash,role,producer_id,created_at) VALUES (?,?,?,?,?,?,?)")
     .run(
-      body.name.trim().slice(0, 120),
-      body.email.trim(),
-      body.phone.trim().slice(0, 40),
+      name.slice(0, 120),
+      email,
+      phone.slice(0, 40),
       hashPassword(body.password),
       role,
       producerId,
@@ -107,9 +136,9 @@ router.post("/register", (req, res) => {
   res.json({
     user: {
       id: userId,
-      name: body.name.trim(),
-      email: body.email.trim(),
-      phone: body.phone,
+      name,
+      email,
+      phone,
       role,
       producer_id: producerId,
     },
