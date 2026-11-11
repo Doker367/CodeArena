@@ -18,6 +18,9 @@ mkdir -p "$MODEL_DIR"
 for file in model.bin tokenizer.json shared_vocabulary.json config.json; do
   if [ ! -f "$MODEL_DIR/$file" ]; then
     echo "==> Descargando $file (puede tardar; el modelo pesa ~3 GB)"
+    curl -L --fail "$REPO/$file" -o "$MODEL_DIR/$file"
+  else
+    echo "==> Reanudando $file"
     curl -L --fail --continue-at - "$REPO/$file" -o "$MODEL_DIR/$file"
   fi
 done
