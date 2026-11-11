@@ -233,8 +233,8 @@ const LANGUAGES = [
  */
 const TRANSLATION_RESEARCH = {
   summary:
-    "No existe una API pública de traducción automática confiable para tsotsil, tseltal, ch'ol, tojolabal o zoque. Google Cloud Translation y Microsoft Translator solo incorporan maya yucateco; NLLB-200 de Meta no incluye ninguna lengua de Chiapas. Existen diccionarios y un modelo experimental de tsotsil restringido, por lo que la vía responsable es la traducción humana comunitaria.",
-  automaticAvailable: false,
+    "No existe una API pública estable de traducción automática para las lenguas de Chiapas: Google Cloud Translation y Microsoft Translator solo incorporan maya yucateco, y NLLB-200 no incluye estas lenguas. Sin embargo, el modelo abierto MADLAD-400 sí cubre tsotsil, tseltal, ch'ol, tojolabal, mam, kaqchikel, jacalteco, kanjobal y maya yucateco. ORIGEN CHIAPAS puede ejecutarlo localmente (3B, int8, CPU) y aun así derivar a intérpretes humanos para revisión.",
+  automaticAvailable: true,
   providers: [
     {
       name: "Google Cloud Translation",
@@ -256,6 +256,23 @@ const TRANSLATION_RESEARCH = {
       chiapas: false,
       note: "Sus códigos FLORES-200 no incluyen tzo_Latn, tzh_Latn, ctu_Latn ni toj_Latn.",
       url: "https://ai.meta.com/blog/nllb-200-high-quality-machine-translation/",
+    },
+    {
+      name: "MADLAD-400 3B (local)",
+      supports: [
+        "Tsotsil (tzo)",
+        "Tseltal (tzh)",
+        "Ch'ol (ctu)",
+        "Tojolabal (toj)",
+        "Mam (mam)",
+        "Kaqchikel (cak)",
+        "Jacalteco (jac)",
+        "Kanjobal (knj)",
+        "Maya yucateco (yua)",
+      ],
+      chiapas: true,
+      note: "Modelo abierto de Google que sí incluye lenguas de Chiapas; se ejecuta en CPU con CTranslate2 int8.",
+      url: "https://huggingface.co/google/madlad400-3b-mt",
     },
     {
       name: "Hugging Face · tsotsil-es-translator",

@@ -159,9 +159,21 @@ Investigación aplicada al producto:
 
 - Google Cloud Translation y Microsoft Translator **solo ofrecen maya yucateco**, no las lenguas de Chiapas.
 - **NLLB-200** (Meta) no incluye tsotsil, tseltal, ch'ol, tojolabal ni zoque en sus 200 lenguas.
-- Existe un modelo **experimental tsotsil→español** en Hugging Face con acceso restringido; se puede habilitar con `TRANSLATE_PROVIDER=hf` y `HF_TOKEN`.
-- Por eso el flujo principal es **intérprete comunitario humano** (`interpreter_requests`), con folio, canal de contacto y enlaces a DITSEL, Glosbe, INALI, CELALI y Maya Bridge.
+- **MADLAD-400** de Google sí incluye tsotsil, tseltal, ch'ol, tojolabal, mam, kaqchikel, jacalteco, kanjobal y maya yucateco. ORIGEN CHIAPAS lo ejecuta **localmente** con CTranslate2 int8 (3 GB, CPU) en `translation-service/`.
+- Además hay una **memoria de 10,445 frases tseltal–español** extraída de un corpus público: devuelve traducciones humanas reales para frases frecuentes.
+- El flujo principal sigue siendo **intérprete comunitario humano** (`interpreter_requests`), con folio, canal de contacto y enlaces a DITSEL, Glosbe, INALI, CELALI y Maya Bridge.
+- La salida automática se marca como **beta** y debe revisarse por una persona hablante de la variante.
 - La mensajería incluye un botón **Traducir** por mensaje; si no hay proveedor automático, explica la limitación y deriva a la solicitud de intérprete.
+
+### Traductor local (opcional, ~3 GB)
+
+```bash
+npm run translate:setup   # crea el venv y descarga MADLAD-400 + corpus tseltal
+npm run translate         # http://127.0.0.1:5001
+npm run dev:all           # API + web + traductor en paralelo
+```
+
+El backend detecta el servicio en `TRANSLATE_SERVICE_URL` (default `http://127.0.0.1:5001`). Si no está activo, la app deriva a intérprete humano.
 
 > La demo guarda las solicitudes de intérprete localmente; no las envía a una red real.
 

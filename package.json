@@ -12,7 +12,11 @@
     "build": "npm run build -w frontend",
     "start": "concurrently -k -n API,WEB -c green,cyan \"npm run start -w backend\" \"npm run start -w frontend\"",
     "lint": "npm run lint -w frontend",
-    "db:reset": "rm -f backend/data/origen.db backend/data/origen.db-wal backend/data/origen.db-shm"
+    "db:reset": "rm -f backend/data/origen.db backend/data/origen.db-wal backend/data/origen.db-shm",
+    "translate:setup": "bash translation-service/setup.sh",
+    "translate": "translation-service/.venv/bin/python translation-service/madlad_server.py",
+    "dev:all": "concurrently -k -n API,WEB,MT -c green,cyan,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\" \"npm run translate\"",
+    "start:all": "concurrently -k -n API,WEB,MT -c green,cyan,magenta \"npm run start -w backend\" \"npm run start -w frontend\" \"npm run translate\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

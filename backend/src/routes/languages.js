@@ -8,8 +8,20 @@ const { saveTranslation, getTranslation } = require("../queries");
 const router = express.Router();
 const recentRequests = new Map();
 
+const LOCAL_SERVICE = (process.env.TRANSLATE_SERVICE_URL || "http://127.0.0.1:5001").replace(/\/$/, "");
+
 function hfConfigured() {
   return process.env.TRANSLATE_PROVIDER === "hf" && Boolean(process.env.HF_TOKEN);
+}
+
+async function localServiceStatus() {
+  try {
+    const response = await fetch(`${LOCAL_SERVICE}/health`, { signal: AbortSignal.timeout(900) });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
 }
 
 function serializeLanguage(row) {
@@ -36,17 +48,24 @@ function listLanguages() {
   return LANGUAGES;
 }
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
+  const local = await localServiceStatus();
+  const hf = hfConfigured();
+  const localPairs = local?.languages?.map((code) => `es→${code}`) ?? [];
   res.json({
     languages: listLanguages(),
     research: TRANSLATION_RESEARCH,
     automatic: {
-      available: hfConfigured(),
-      provider: hfConfigured() ? "hf-tsotsil-experimental" : "none",
-      pairs: hfConfigured() ? ["tzo→es"] : [],
-      message: hfConfigured()
-        ? "Modelo experimental tsotsil→español habilitado. Requiere revisión humana."
-        : "Sin proveedor automático configurado para las lenguas de Chiapas.",
+      available: Boolean(local) || hf,
+      provider: local ? "madlad-400-3b-local" : hf ? "hf-tsotsil-experimental" : "none",
+      pairs: local ? localPairs : hf ? ["tzo→es"] : [],
+      local: Boolean(local),
+      tseltalPhrases: local?.tseltal_phrases ?? 0,
+      message: local
+        ? "MADLAD-400 local activo: tsotsil, tseltal, ch'ol, tojolabal, mam, kaqchikel, jacalteco, kanjobal y maya. Requiere revisión humana."
+        : hf
+          ? "Modelo experimental tsotsil→español habilitado. Requiere revisión humana."
+          : "Sin proveedor automático activo. Inicia el servicio local MADLAD-400 o solicita intérprete.",
     },
     human: {
       available: true,

@@ -1,12 +1,50 @@
 const { LANGUAGES, TRANSLATION_RESEARCH } = require("./languages");
 
+const LOCAL_SERVICE = (process.env.TRANSLATE_SERVICE_URL || "http://127.0.0.1:5001").replace(/\/$/, "");
+const MADLAD_TARGETS = new Set(["tzo", "tzh", "ctu", "toj", "mam", "cak", "jac", "knj", "yua"]);
+
+async function tryLocalService(text, target) {
+  if (!MADLAD_TARGETS.has(target)) return null;
+  try {
+    const response = await fetch(`${LOCAL_SERVICE}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, target }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data.available) {
+      return {
+        available: false,
+        provider: data.provider || "madlad-400-3b-local",
+        reason: data.reason || "El traductor local no pudo procesar esta frase.",
+        target,
+      };
+    }
+    if (!data.text) return null;
+    return {
+      available: true,
+      text: data.text,
+      provider: data.provider || "madlad-400-3b-local",
+      target,
+      warning:
+        data.warning ||
+        "Traducción automática de MADLAD-400. Puede requerir revisión de una persona hablante.",
+      elapsedMs: data.elapsed_ms,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Traducción automática opt-in.
  *
- * En 2026 no existe un proveedor público confiable para las lenguas de
- * Chiapas. Habilitamos únicamente el modelo experimental de tsotsil→español
- * cuando el operador configura HF_TOKEN y TRANSLATE_PROVIDER=hf.
- * Cualquier otro par devuelve disponible:false para derivar a intérprete.
+ * 1) Servicio local MADLAD-400 (recomendado): cubre tsotsil, tseltal, ch'ol,
+ *    tojolabal, mam, kaqchikel, jacalteco, kanjobal y maya yucateco.
+ * 2) Hugging Face (modelo experimental tsotsil→español), si hay token.
+ * 3) Derivación a intérprete humano.
  */
 async function translateText({ text, source = "es", target }) {
   const clean = String(text ?? "").trim();
@@ -21,6 +59,9 @@ async function translateText({ text, source = "es", target }) {
   if (target === source) {
     return { available: true, text: clean, provider: "same", target };
   }
+
+  const local = await tryLocalService(clean, target);
+  if (local?.available) return local;
 
   const hfEnabled = process.env.TRANSLATE_PROVIDER === "hf" && Boolean(process.env.HF_TOKEN);
   const model = process.env.HF_TRANSLATION_MODEL || "Joseph18/tsotsil-es-translator";
@@ -63,14 +104,18 @@ async function translateText({ text, source = "es", target }) {
     }
   }
 
+  if (local && !local.available) {
+    return { ...local, language, research: TRANSLATION_RESEARCH };
+  }
+
   return {
     available: false,
     provider: "none",
     reason:
-      "No existe traducción automática confiable para esta lengua. Google y Microsoft solo cubren maya yucateco, y NLLB-200 no incluye lenguas de Chiapas. Te conectamos con una persona intérprete de la red comunitaria.",
+      "No hay un traductor automático activo en este momento. Google y Microsoft solo cubren maya yucateco; NLLB-200 no incluye lenguas de Chiapas. Puedes iniciar el servicio local MADLAD-400 o solicitar una persona intérprete de la red comunitaria.",
     language,
     research: TRANSLATION_RESEARCH,
   };
 }
 
-module.exports = { translateText };
+module.exports = { translateText, MADLAD_TARGETS };

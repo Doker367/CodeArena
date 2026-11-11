@@ -7,7 +7,14 @@ import type { Language, TranslationResearch } from "@/lib/types";
 export type LanguagesPayload = {
   languages: Language[];
   research: TranslationResearch;
-  automatic: { available: boolean; provider: string; pairs: string[]; message: string };
+  automatic: {
+    available: boolean;
+    provider: string;
+    pairs: string[];
+    message: string;
+    local?: boolean;
+    tseltalPhrases?: number;
+  };
   human: { available: boolean; phone: string; whatsapp: string; hours: string };
 };
 
@@ -297,7 +304,14 @@ export function LanguagesView({ data }: { data: LanguagesPayload }) {
                 {translation && (
                   <div className="rounded-xl bg-secondary-container/30 border border-secondary/20 p-4">
                     <p className="font-label-sm text-[10px] uppercase tracking-wider text-secondary font-bold">
-                      {activeLanguage.name} · {translation.provider === "hf-tsotsil-experimental" ? "modelo experimental" : "traducción"}
+                      {activeLanguage.name} ·{" "}
+                      {translation.provider === "tseltal-memory"
+                        ? "memoria tseltal · frase real"
+                        : translation.provider.startsWith("madlad")
+                          ? "MADLAD-400 · IA abierta"
+                          : translation.provider === "hf-tsotsil-experimental"
+                            ? "modelo experimental"
+                            : "traducción"}
                     </p>
                     <p className="font-body-lg text-body-lg text-primary mt-1">{translation.text}</p>
                     {translation.warning && <p className="font-label-sm text-[10px] text-outline mt-1">{translation.warning}</p>}
@@ -319,6 +333,16 @@ export function LanguagesView({ data }: { data: LanguagesPayload }) {
                     </div>
                   </div>
                 )}
+
+                {data.automatic.tseltalPhrases ? (
+                  <div className="rounded-xl bg-secondary-container/30 p-3 flex items-start gap-2">
+                    <span className="material-symbols-outlined text-secondary text-lg">menu_book</span>
+                    <p className="font-label-sm text-label-sm text-on-surface-variant">
+                      <strong className="text-primary">{data.automatic.tseltalPhrases.toLocaleString("es-MX")} frases tseltal</strong>{" "}
+                      verificadas del corpus comunitario. Prueba «¿Cuánto cuesta?», «Buenos días», «Gracias» o «café».
+                    </p>
+                  </div>
+                ) : null}
 
                 {!data.automatic.available && (
                   <div className="rounded-xl bg-surface-container-low p-3 flex items-start gap-2">

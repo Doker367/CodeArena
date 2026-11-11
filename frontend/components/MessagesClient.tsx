@@ -566,7 +566,14 @@ export function MessagesClient({
                         {translations[m.id] && (
                           <div className={`mt-1 max-w-[78%] rounded-xl border border-secondary/20 bg-secondary-container/20 px-3 py-2 ${mine ? "text-right" : ""}`}>
                             <span className="font-label-sm text-[9px] uppercase tracking-wider text-secondary font-bold">
-                              {languages.find((l) => l.code === targetLang)?.name ?? targetLang} · {translations[m.id].provider === "hf-tsotsil-experimental" ? "beta" : "comunidad"}
+                              {languages.find((l) => l.code === targetLang)?.name ?? targetLang} ·{" "}
+                              {translations[m.id].provider === "tseltal-memory"
+                                ? "frase comunitaria"
+                                : translations[m.id].provider.startsWith("madlad")
+                                  ? "IA abierta"
+                                  : translations[m.id].provider === "hf-tsotsil-experimental"
+                                    ? "beta"
+                                    : "comunidad"}
                             </span>
                             <p className="font-body-sm text-body-sm text-on-surface">{translations[m.id].text}</p>
                           </div>
